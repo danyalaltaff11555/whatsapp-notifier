@@ -1,0 +1,175 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum NotificationStatus {
+  queued
+  processing
+  sent
+  delivered
+  read
+  failed
+  rate_limited
+  scheduled
+}
+
+enum NotificationPriority {
+  high
+  normal
+  low
+}
+
+// ============================================================================
+// Models
+// ============================================================================
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.VarChar(255)
+
+  // Event information
+  eventType String   @map("event_type") @db.VarChar(100)
+
+  // Recipient
+  recipientPhone       String  @map("recipient_phone") @db.VarChar(20)
+  recipientCountryCode String? @map("recipient_country_code") @db.VarChar(2)
+
+  // Message content (JSONB)
+  template Json?
+  message  Json?
+  metadata Json?
+
+  // Status tracking
+  status             NotificationStatus  @default(queued)
+  priority           NotificationPriority @default(normal)
+  whatsappMessageId  String?             @map("whatsapp_message_id") @db.VarChar(255)
+
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  scheduledFor DateTime? @map("scheduled_for") @db.Timestamptz
+  sentAt      DateTime? @map("sent_at") @db.Timestamptz
+  deliveredAt DateTime? @map("delivered_at") @db.Timestamptz
+  readAt      DateTime? @map("read_at") @db.Timestamptz
+  failedAt    DateTime? @map("failed_at") @db.Timestamptz
+
+  // Error tracking
+  errorCode    String? @map("error_code") @db.VarChar(50)
+  errorMessage String? @map("error_message") @db.Text
+
+  // Retry metadata
+  attemptNumber Int       @default(0) @map("attempt_number")
+  maxAttempts   Int       @default(5) @map("max_attempts")
+  nextRetryAt   DateTime? @map("next_retry_at") @db.Timestamptz
+
+  // Tracing
+  traceId String @map("trace_id") @db.Uuid
+
+  // Relations
+  deliveryLogs DeliveryLog[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([recipientPhone])
+  @@index([createdAt(sort: Desc)])
+  @@index([scheduledFor])
+  @@index([nextRetryAt])
+  @@index([traceId])
+  @@index([eventType])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model DeliveryLog {
+  id             BigInt   @id @default(autoincrement())
+  notificationId String   @map("notification_id") @db.Uuid
+
+  // Attempt details
+  attemptNumber Int                @map("attempt_number")
+  status        NotificationStatus
+
+  // WhatsApp response
+  whatsappMessageId String? @map("whatsapp_message_id") @db.VarChar(255)
+
+  // Error details
+  errorCode    String? @map("error_code") @db.VarChar(50)
+  errorMessage String? @map("error_message") @db.Text
+
+  // Performance
+  responseTimeMs Int? @map("response_time_ms")
+
+  // API response (for debugging)
+  apiResponse Json? @map("api_response")
+
+  // Timestamp
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@map("delivery_logs")
+}
+
+model RateLimit {
+  id             BigInt   @id @default(autoincrement())
+  recipientPhone String   @map("recipient_phone") @db.VarChar(20)
+
+  // Time windows
+  windowStart DateTime @map("window_start") @db.Timestamptz
+  windowEnd   DateTime @map("window_end") @db.Timestamptz
+
+  // Counters
+  messageCount Int @default(0) @map("message_count")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([recipientPhone])
+  @@index([windowStart, windowEnd])
+  @@map("rate_limits")
+}
+
+model ApiKey {
+  id       BigInt  @id @default(autoincrement())
+  tenantId String  @unique @map("tenant_id") @db.VarChar(255)
+  apiKey   String  @unique @map("api_key") @db.VarChar(255)
+
+  // Metadata
+  name        String? @db.VarChar(255)
+  description String? @db.Text
+
+  // Status
+  isActive Boolean @default(true) @map("is_active")
+
+  // Rate limits
+  rateLimitPerMinute Int? @default(100) @map("rate_limit_per_minute")
+  rateLimitPerHour   Int? @default(1000) @map("rate_limit_per_hour")
+  rateLimitPerDay    Int? @default(10000) @map("rate_limit_per_day")
+
+  // Timestamps
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz
+
+  @@index([apiKey])
+  @@index([tenantId])
+  @@index([isActive])
+  @@map("api_keys")
+}

@@ -1,0 +1,25 @@
+{
+    "name": "@whatsapp-notif/shared",
+    "version": "1.0.0",
+    "description": "Shared types, utilities, and validation schemas",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "clean": "rm -rf dist",
+        "test": "jest"
+    },
+    "dependencies": {
+        "@prisma/client": "^7.4.0",
+        "@sentry/node": "^10.38.0",
+        "@sentry/profiling-node": "^10.38.0",
+        "axios": "^1.13.5",
+        "pino": "^8.19.0",
+        "zod": "^3.22.4"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.19",
+        "typescript": "^5.3.3"
+    }
+}

@@ -1,0 +1,24 @@
+{
+    "name": "@whatsapp-notif/worker",
+    "version": "1.0.0",
+    "description": "Lambda worker for processing WhatsApp notifications",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+        "clean": "rm -rf dist",
+        "test": "jest"
+    },
+    "dependencies": {
+        "@aws-sdk/client-sqs": "^3.990.0",
+        "@whatsapp-notif/shared": "*",
+        "axios": "^1.6.7",
+        "dotenv": "^16.4.1"
+    },
+    "devDependencies": {
+        "@types/aws-lambda": "^8.10.133",
+        "@types/node": "^20.11.19",
+        "ts-node-dev": "^2.0.0",
+        "typescript": "^5.3.3"
+    }
+}
